@@ -6,10 +6,11 @@ from django.views.generic import UpdateView, ListView
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.urls import reverse
-
+from django.core.mail import send_mail
 from .forms import NewTopicForm, PostForm
 from .models import Board, Post, Topic
-
+from accounts.models import Profile
+from django.contrib.auth.models import User 
 
 class BoardListView(ListView):
     model = Board
@@ -78,6 +79,7 @@ def new_topic(request, pk):
 @login_required
 def reply_topic(request, pk, topic_pk):
     topic = get_object_or_404(Topic, board__pk=pk, pk=topic_pk)
+    topic_starter = get_object_or_404(User, pk=topic.starter.pk)
     if request.method == 'POST':
         form = PostForm(request.POST)
         if form.is_valid():
@@ -95,7 +97,11 @@ def reply_topic(request, pk, topic_pk):
                 id=post.pk,
                 page=topic.get_page_count()
             )
-
+            if topic_starter.profile.notification == True:
+                send_mail("Reply topic", 
+                "Your topic is replied",
+                "django2020@gmail.com",
+                [topic_starter.email])
             return redirect(topic_post_url)
     else:
         form = PostForm()
